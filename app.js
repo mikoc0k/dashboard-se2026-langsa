@@ -275,50 +275,6 @@ function normalizePointList(rawPoints) {
   return [];
 }
 
-function setSummaryLabel(selector, labelText) {
-  const summaryCard = document.querySelector(selector);
-  if (!summaryCard) return;
-  const labelNode = summaryCard.querySelector('.stat-label span');
-  if (labelNode) {
-    labelNode.textContent = labelText;
-  }
-}
-
-function countBusinessPerDistrict(points, districtFeatures = []) {
-  const counts = {};
-  const districtList = Array.isArray(districtFeatures) ? districtFeatures : [];
-
-  districtList.forEach((feature) => {
-    const districtName = feature?.properties?.district || 'Lainnya';
-    counts[districtName] = 0;
-  });
-
-  if (typeof turf === 'undefined' || !turf.booleanPointInPolygon || districtList.length === 0) {
-    return counts;
-  }
-
-  points.forEach((point) => {
-    if (!point || point.type !== 'usaha') return;
-
-    const pointFeature = turf.point([point.lng, point.lat]);
-    let districtName = null;
-
-    for (const feature of districtList) {
-      if (!feature || !feature.geometry) continue;
-      if (turf.booleanPointInPolygon(pointFeature, feature)) {
-        districtName = feature.properties?.district || 'Lainnya';
-        break;
-      }
-    }
-
-    if (districtName) {
-      counts[districtName] = (counts[districtName] || 0) + 1;
-    }
-  });
-
-  return counts;
-}
-
 function renderPoints(points, districtFeatures = []) {
   familyLayer.clearLayers();
   businessLayer.clearLayers();
@@ -327,11 +283,6 @@ function renderPoints(points, districtFeatures = []) {
   const validPoints = normalizePointList(points).filter(isUsahaPoint);
   const counts = { usaha: 0 };
   const pointBounds = [];
-  const districtCounts = countBusinessPerDistrict(validPoints, districtFeatures);
-  const topDistricts = Object.entries(districtCounts)
-    .filter(([, count]) => Number(count) > 0)
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 2);
 
   validPoints.forEach((point) => {
     const layer = businessLayer;
@@ -355,22 +306,9 @@ function renderPoints(points, districtFeatures = []) {
     }
   });
 
-  if (topDistricts.length > 0) {
-    const [firstDistrict, firstCount] = topDistricts[0];
-    const [secondDistrict, secondCount] = topDistricts[1] || [null, 0];
-
-    setSummaryLabel('#card-family', `Usaha - ${firstDistrict}`);
-    setSummaryLabel('#card-business', secondDistrict ? `Usaha - ${secondDistrict}` : 'Usaha - Lainnya');
-    familyCountElement.textContent = firstCount;
-    businessCountElement.textContent = secondCount || 0;
-  } else {
-    setSummaryLabel('#card-family', 'Usaha - Kecamatan');
-    setSummaryLabel('#card-business', 'Usaha - Kecamatan');
-    familyCountElement.textContent = 0;
-    businessCountElement.textContent = 0;
+  if (totalPointsElement) {
+    totalPointsElement.textContent = validPoints.length;
   }
-
-  totalPointsElement.textContent = validPoints.length;
 
   return pointBounds;
 }
